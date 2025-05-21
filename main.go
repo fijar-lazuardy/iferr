@@ -128,12 +128,26 @@ func typeString(x ast.Expr) string {
 }
 
 func writeIferr(w io.Writer, types []ast.Expr, errMsg string) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return err
+	}
+
+	// Define the keyword you want to check
+	keyword := "doitpay"
+	var loggerStr string
+	if strings.Contains(cwd, keyword) {
+		loggerStr = "\n\tlogger.Error(ctx, \"error\", err)"
+	} else {
+		loggerStr = ""
+	}
 	if len(types) == 0 {
-		_, err := fmt.Fprint(w, "if err != nil {\n\treturn\n}\n")
+		_, err := fmt.Fprint(w, fmt.Sprintf("if err != nil {%s\n\treturn\n\t}\n", loggerStr))
 		return err
 	}
 	bb := &bytes.Buffer{}
-	bb.WriteString("if err != nil {\n\treturn ")
+	bb.WriteString(fmt.Sprintf("if err != nil {%s\n\treturn ", loggerStr))
 	for i, t := range types {
 		if i > 0 {
 			bb.WriteString(", ")
@@ -176,16 +190,11 @@ func writeIferr(w io.Writer, types []ast.Expr, errMsg string) error {
 			bb.WriteString("nil")
 			continue
 		}
-		// treat it as an interface when type name has "."
-		if strings.Index(ts, ".") >= 0 {
-			bb.WriteString("nil")
-			continue
-		}
 		// TODO: support more types.
 		bb.WriteString(ts)
 		bb.WriteString("{}")
 	}
-	bb.WriteString("\n}\n")
+	bb.WriteString("\n\t}\n")
 	io.Copy(w, bb)
 	return nil
 }
